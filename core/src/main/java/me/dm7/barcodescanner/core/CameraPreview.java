@@ -3,6 +3,7 @@ package me.dm7.barcodescanner.core;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Point;
+import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Handler;
 import android.util.AttributeSet;
@@ -11,12 +12,13 @@ import android.view.Display;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 
 import java.util.List;
 
-public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
+public class CameraPreview extends TextureView implements TextureView.SurfaceTextureListener {
     private static final String TAG = "CameraPreview";
 
     private Camera mCamera;
@@ -25,6 +27,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     private boolean mAutoFocus = true;
     private boolean mSurfaceCreated = false;
     private Camera.PreviewCallback mPreviewCallback;
+
 
     public CameraPreview(Context context, Camera camera, Camera.PreviewCallback previewCallback) {
         super(context);
@@ -39,8 +42,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     public void init(Camera camera, Camera.PreviewCallback previewCallback) {
         setCamera(camera, previewCallback);
         mAutoFocusHandler = new Handler();
-        getHolder().addCallback(this);
-        getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        this.setSurfaceTextureListener(this);
     }
 
     public void setCamera(Camera camera, Camera.PreviewCallback previewCallback) {
@@ -48,37 +50,16 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         mPreviewCallback = previewCallback;
     }
 
-    @Override
-    public void surfaceCreated(SurfaceHolder surfaceHolder) {
-        mSurfaceCreated = true;
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
-        if(surfaceHolder.getSurface() == null) {
-            return;
-        }
-        stopCameraPreview();
-        showCameraPreview();
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-        mSurfaceCreated = false;
-        stopCameraPreview();
-    }
-
     public void showCameraPreview() {
-        if(mCamera != null) {
+        if (mCamera != null) {
             try {
-                getHolder().addCallback(this);
                 mPreviewing = true;
                 setupCameraParameters();
-                mCamera.setPreviewDisplay(getHolder());
+                mCamera.setPreviewTexture(this.getSurfaceTexture());
                 mCamera.setDisplayOrientation(getDisplayOrientation());
                 mCamera.setOneShotPreviewCallback(mPreviewCallback);
                 mCamera.startPreview();
-                if(mAutoFocus) {
+                if (mAutoFocus) {
                     if (mSurfaceCreated) { // check if surface created before using autofocus
                         safeAutoFocus();
                     } else {
@@ -102,14 +83,13 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     }
 
     public void stopCameraPreview() {
-        if(mCamera != null) {
+        if (mCamera != null) {
             try {
                 mPreviewing = false;
-                getHolder().removeCallback(this);
                 mCamera.cancelAutoFocus();
-                mCamera.setOneShotPreviewCallback(null);
                 mCamera.stopPreview();
-            } catch(Exception e) {
+                mCamera.setOneShotPreviewCallback(null);
+            } catch (Exception e) {
                 Log.e(TAG, e.toString(), e);
             }
         }
@@ -164,10 +144,18 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         int rotation = display.getRotation();
         int degrees = 0;
         switch (rotation) {
-            case Surface.ROTATION_0: degrees = 0; break;
-            case Surface.ROTATION_90: degrees = 90; break;
-            case Surface.ROTATION_180: degrees = 180; break;
-            case Surface.ROTATION_270: degrees = 270; break;
+            case Surface.ROTATION_0:
+                degrees = 0;
+                break;
+            case Surface.ROTATION_90:
+                degrees = 90;
+                break;
+            case Surface.ROTATION_180:
+                degrees = 180;
+                break;
+            case Surface.ROTATION_270:
+                degrees = 270;
+                break;
         }
 
         int result;
@@ -181,7 +169,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     }
 
     private Camera.Size getOptimalPreviewSize() {
-        if(mCamera == null) {
+        if (mCamera == null) {
             return null;
         }
 
@@ -227,12 +215,12 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     }
 
     public void setAutoFocus(boolean state) {
-        if(mCamera != null && mPreviewing) {
-            if(state == mAutoFocus) {
+        if (mCamera != null && mPreviewing) {
+            if (state == mAutoFocus) {
                 return;
             }
             mAutoFocus = state;
-            if(mAutoFocus) {
+            if (mAutoFocus) {
                 if (mSurfaceCreated) { // check if surface created before using autofocus
                     Log.v(TAG, "Starting autofocus");
                     safeAutoFocus();
@@ -248,7 +236,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 
     private Runnable doAutoFocus = new Runnable() {
         public void run() {
-            if(mCamera != null && mPreviewing && mAutoFocus && mSurfaceCreated) {
+            if (mCamera != null && mPreviewing && mAutoFocus && mSurfaceCreated) {
                 safeAutoFocus();
             }
         }
@@ -263,5 +251,28 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 
     private void scheduleAutoFocus() {
         mAutoFocusHandler.postDelayed(doAutoFocus, 1000);
+    }
+
+    @Override
+    public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int i, int i1) {
+        mSurfaceCreated = true;
+        showCameraPreview();
+    }
+
+    @Override
+    public void onSurfaceTextureSizeChanged(SurfaceTexture surfaceTexture, int i, int i1) {
+    }
+
+    @Override
+    public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
+        mSurfaceCreated = true;
+        stopCameraPreview();
+        return false;
+    }
+
+    @Override
+    public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) {
+//        stopCameraPreview();
+//        showCameraPreview();
     }
 }

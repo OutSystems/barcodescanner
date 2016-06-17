@@ -56,7 +56,7 @@ public class ZBarScannerView extends BarcodeScannerView {
     }
 
     public Collection<BarcodeFormat> getFormats() {
-        if(mFormats == null) {
+        if (mFormats == null) {
             return BarcodeFormat.ALL_FORMATS;
         }
         return mFormats;
@@ -68,14 +68,14 @@ public class ZBarScannerView extends BarcodeScannerView {
         mScanner.setConfig(0, Config.Y_DENSITY, 3);
 
         mScanner.setConfig(Symbol.NONE, Config.ENABLE, 0);
-        for(BarcodeFormat format : getFormats()) {
+        for (BarcodeFormat format : getFormats()) {
             mScanner.setConfig(format.getId(), Config.ENABLE, 1);
         }
     }
 
     @Override
     public void onPreviewFrame(byte[] data, Camera camera) {
-        if(mResultHandler == null) {
+        if (mResultHandler == null) {
             return;
         }
 
@@ -85,7 +85,7 @@ public class ZBarScannerView extends BarcodeScannerView {
             int width = size.width;
             int height = size.height;
 
-            if(DisplayUtils.getScreenOrientation(getContext()) == Configuration.ORIENTATION_PORTRAIT) {
+            if (DisplayUtils.getScreenOrientation(getContext()) == Configuration.ORIENTATION_PORTRAIT) {
                 byte[] rotatedData = new byte[data.length];
                 for (int y = 0; y < height; y++) {
                     for (int x = 0; x < width; x++)
@@ -123,7 +123,7 @@ public class ZBarScannerView extends BarcodeScannerView {
                         // onPreviewFrame.
                         ResultHandler tmpResultHandler = mResultHandler;
                         mResultHandler = null;
-                        
+
                         stopCameraPreview();
                         if (tmpResultHandler != null) {
                             tmpResultHandler.handleResult(rawResult);
@@ -131,9 +131,10 @@ public class ZBarScannerView extends BarcodeScannerView {
                     }
                 });
             } else {
-                camera.setOneShotPreviewCallback(this);
+                if (!this.isCamRelease())
+                    camera.setOneShotPreviewCallback(this);
             }
-        } catch(RuntimeException e) {
+        } catch (RuntimeException e) {
             // TODO: Terrible hack. It is possible that this method is invoked after camera is released.
             Log.e(TAG, e.toString(), e);
         }

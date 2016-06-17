@@ -38,6 +38,11 @@ public class SimpleScannerActivity extends BaseScannerActivity implements ZBarSc
     public void handleResult(Result rawResult) {
         Toast.makeText(this, "Contents = " + rawResult.getContents() +
                 ", Format = " + rawResult.getBarcodeFormat().getName(), Toast.LENGTH_SHORT).show();
+
+
+        // BarcodeScannerView is now animatable!
+//        mScannerView.animate().alpha(0).setDuration(1000);
+
         // Note:
         // * Wait 2 seconds to resume the preview.
         // * On older devices continuously stopping and resuming camera preview can result in freezing the app.
